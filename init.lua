@@ -46,61 +46,35 @@ end
 set_led(0, false)
 set_led(1, false)
 
-function sendfile(fileName, conn)
-    if file.open(fileName, "r") then
-        conn:send("HTTP/1.1 200 OK\r\n\r\n")
-        while true do
-            data = file.read(256)
-            if data == nil then
-                break
-            end
-            conn:send(data)
-        end
-        file.close()
-    else
-        conn:send("HTTP/1.1 404 Not Found\r\n\r\nNot Found")
-    end
-    conn:close()
-end
-
 -- a simple http server
-if srv then
-    srv:close()
-end
-srv = net.createServer(net.TCP) 
-srv:listen(80, function(conn) 
-    conn:on("receive",function(conn, payload)
-
-    request = {}
-    request.method = string.match(payload, '^([A-Z]+) ')
-    request.path = string.match(payload, '[A-Z]+ (/[^ ]*) ')
-    
-    answer = nil
-    if request.path == "/led0_on" then
-      answer = "OK"
-      set_led(0, true)
-    elseif request.path == "/led0_off" then
-      answer = "OK"
-      set_led(0, false)
-    elseif request.path == "/led1_on" then
-      answer = "OK"
-      set_led(1, true)
-    elseif request.path == "/led1_off" then
-      answer = "OK"
-      set_led(1, false)
-    elseif request.path == "/btn_state" then
-      answer = "<meta http-equiv='refresh' content='1'>BTN = " .. gpio.read(btn_pin)
-    elseif request.path == "/" then
-      sendfile("index.html", conn)
-      return
-    else
-      answer = "HELLO"
-    end
-
-    conn:send("HTTP/1.1 200 OK\r\nContent-type: text/html;charset=utf8\r\n\r\n")
-    if answer ~= nil then
-      conn:send(answer .. "\n")
-    end
-    conn:close()
-    end)
+dofile("web.lua")
+web.listen(80)
+web.on("/test", function(request)
+    print("/test!!!")
+    request:answer(200, "Hello!")
+end)
+web.on("/led0_on", function(request)
+    set_led(0, true)
+    request:answer(200, "OK")
+end)
+web.on("/led0_off", function(request)
+    set_led(0, false)
+    request:answer(200, "OK")
+end)
+web.on("/led1_on", function(request)
+    set_led(1, true)
+    request:answer(200, "OK")
+end)
+web.on("/led1_off", function(request)
+    set_led(1, false)
+    request:answer(200, "OK")
+end)
+web.on("/btn_state", function(request)
+    request:answer(200, "<meta http-equiv='refresh' content='1'>BTN = " .. gpio.read(btn_pin))
+end)
+web.on("/", function(request)
+    request:sendFile("index.html")
+end)
+web.on(".*", function(request)
+    request:answer(200, "HELLO")
 end)
